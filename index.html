@@ -101,24 +101,6 @@
   </audio>
 
   <script>
-    // ====== Utility drawing: heart path ======
-    function drawHeart(ctx, x, y, size, fill, shadow=false){
-      // 'size' is in pixels; we convert to a 0..1 scale inside
-      const s = size;
-      ctx.save();
-      ctx.translate(x, y);
-      ctx.scale(s/100, s/100);
-      ctx.beginPath();
-      // Parametric-ish cartoony heart
-      ctx.moveTo(0, -0.25);
-      ctx.bezierCurveTo(0.5, -0.95, 1.25, -0.1, 0, 0.9);
-      ctx.bezierCurveTo(-1.25, -0.1, -0.5, -0.95, 0, -0.25);
-      if (shadow){ ctx.shadowColor = 'rgba(0,0,0,.18)'; ctx.shadowBlur = 20; ctx.shadowOffsetY = 6; }
-      if (fill instanceof CanvasGradient) ctx.fillStyle = fill; else ctx.fillStyle = fill || '#ff3b7c';
-      ctx.fill();
-      ctx.restore();
-    }
-
     // ====== Game state ======
     const canvas = document.getElementById('game');
     const ctx = canvas.getContext('2d');
@@ -159,14 +141,6 @@
     function spawnHeart(){
       const size = Math.random()*10 + 18; // 18–28 px
       hearts.push({ x: Math.random()*W, y: -size, vy: (Math.random()*0.7+0.8)*120, size });
-    }
-
-    // Gradient for pixel-sized hearts
-    function heartGradient(x,y,size){
-      const g = ctx.createRadialGradient(x+size*0.4, y-size*0.4, size*0.2, x, y, size*1.6);
-      g.addColorStop(0,'#ff7aa8');
-      g.addColorStop(1,'#ff2f74');
-      return g;
     }
 
     // Input: keyboard
@@ -218,3 +192,130 @@
     noBtn.addEventListener('mouseenter', () => moveNo());
     noBtn.addEventListener('touchstart', (e) => { e.preventDefault(); moveNo(); }, {passive:false});
     function moveNo(){
+      const card = endModal.querySelector('.card').getBoundingClientRect();
+      const maxX = Math.min(card.width - 100, Math.max(10, roam.xMax));
+      const maxY = Math.min(card.height - 60, Math.max(10, roam.yMax));
+      const nx = Math.random() * (maxX - roam.xMin) + roam.xMin;
+      const ny = Math.random() * (maxY - roam.yMin) + roam.yMin;
+      noBtn.style.transform = `translate(${nx}px, ${ny}px)`;
+    }
+
+    yesBtn.addEventListener('click', ()=>{
+      finalText.innerHTML = `Yay! Chinny said <b>YES</b> ✨ Date unlocked!`;
+      noBtn.style.display = 'none';
+    });
+
+    // Countdown timer
+    let lastTick = 0, accum = 0;
+    function update(dt){
+      if (!playing) return;
+      // Keyboard movement
+      const speed = 420;
+      player.vx = 0;
+      if (keys.has('ArrowLeft')) player.vx -= speed;
+      if (keys.has('ArrowRight')) player.vx += speed;
+      player.x += player.vx * dt;
+      player.x = Math.max(40, Math.min(W-40, player.x));
+
+      // Spawn hearts ~ every 220ms scaling with time
+      lastSpawn += dt;
+      const spawnRate = Math.max(0.12, 0.22 - (60-timeLeft)*0.002);
+      if (lastSpawn > spawnRate){ lastSpawn = 0; spawnHeart(); }
+
+      // Update hearts
+      for (let i=hearts.length-1;i>=0;i--){
+        const h = hearts[i];
+        h.y += h.vy * dt;
+        // Collision with player "basket" (use size)
+        if (h.y > player.y - h.size && h.y < player.y + player.h && Math.abs(h.x - player.x) < 60){
+          hearts.splice(i,1); score += 1; scoreEl.textContent = score;
+        } else if (h.y > H + 40){ hearts.splice(i,1); }
+      }
+
+      // Timer
+      accum += dt;
+      if (accum >= 1){
+        accum -= 1; timeLeft -= 1; timeEl.textContent = timeLeft;
+        if (timeLeft <= 0){ endGame(); }
+      }
+    }
+
+    function endGame(){
+      playing = false;
+      finalScoreEl.textContent = score;
+      finalText.innerHTML = `You caught <b>${score}</b> hearts for Chinny!`;
+      endModal.classList.add('show');
+    }
+
+    function drawBackground(){
+      // Soft floating HEART EMOJIS background
+      ctx.clearRect(0,0,W,H);
+      const count = 16;
+      ctx.save();
+      ctx.globalAlpha = 0.25;
+      ctx.textBaseline = 'middle';
+      ctx.textAlign = 'center';
+      for (let i=0;i<count;i++){
+        const x = ((i*97) % W) + (Math.sin(performance.now()/1000 + i)*40);
+        const y = (i/count) * H;
+        ctx.font = '18px Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji, sans-serif';
+        ctx.fillText('💖', x, y);
+      }
+      ctx.restore();
+    }
+
+    function drawPlayer(){
+      // Cute rounded basket
+      ctx.save();
+      ctx.translate(player.x, player.y);
+      // shadow
+      ctx.fillStyle = 'rgba(0,0,0,.12)';
+      ctx.beginPath(); ctx.ellipse(0, 30, 50, 10, 0, 0, Math.PI*2); ctx.fill();
+      // basket body
+      const grd = ctx.createLinearGradient(-70, -20, 70, 20);
+      grd.addColorStop(0, '#ffb3cd'); grd.addColorStop(1, '#ff7aa8');
+      ctx.fillStyle = grd; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2;
+      const r = 16; const w = 120; const h = 26;
+      ctx.beginPath();
+      ctx.moveTo(-w/2 + r, -h/2);
+      ctx.arcTo(w/2, -h/2, w/2, h/2, r);
+      ctx.arcTo(w/2, h/2, -w/2, h/2, r);
+      ctx.arcTo(-w/2, h/2, -w/2, -h/2, r);
+      ctx.arcTo(-w/2, -h/2, w/2, -h/2, r);
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+      // little hearts on basket (emoji too)
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.font = '16px Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji, sans-serif';
+      ctx.fillText('🤍', -22, -2);
+      ctx.fillText('🤍', 0, -2);
+      ctx.fillText('🤍', 22, -2);
+      ctx.restore();
+    }
+
+    function drawHearts(){
+      ctx.save();
+      ctx.textBaseline = 'middle';
+      ctx.textAlign = 'center';
+      for (const h of hearts){
+        ctx.font = `${Math.round(h.size * 1.6)}px Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji, sans-serif`;
+        ctx.fillText('💖', h.x, h.y);
+      }
+      ctx.restore();
+    }
+
+    function loop(ts){
+      if (!playing) return;
+      const dt = Math.min(0.033, (ts - lastTick)/1000); // clamp
+      lastTick = ts;
+      update(dt);
+      drawBackground();
+      drawHearts();
+      drawPlayer();
+      requestAnimationFrame(loop);
+    }
+
+    // Autofit on load after fonts
+    window.addEventListener('load', fit);
+  </script>
+</body>
+</html>
