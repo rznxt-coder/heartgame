@@ -125,6 +125,9 @@
     let player = { x: 0, y: 0, w: 90, h: 26, vx: 0 };
     let keys = new Set();
 
+    // Animation clock (moved up so startGame can use it)
+    let lastTick = 0, accum = 0;
+
     // Resize canvas to device pixels for crispness
     function fit(){
       const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
@@ -136,6 +139,9 @@
       player.y = H - 80; player.x = W/2;
     }
     window.addEventListener('resize', fit); fit();
+
+    // Keep canvas from blocking clicks before the game starts
+    canvas.style.pointerEvents = 'none';
 
     // Spawn falling hearts — pixel sizes so they’re visible
     function spawnHeart(){
@@ -182,6 +188,7 @@
     function startGame(){
       reset();
       startScreen.style.display = 'none';
+      canvas.style.pointerEvents = 'auto';
       playing = true;
       lastTick = performance.now();
       requestAnimationFrame(loop);
@@ -206,7 +213,6 @@
     });
 
     // Countdown timer
-    let lastTick = 0, accum = 0;
     function update(dt){
       if (!playing) return;
       // Keyboard movement
