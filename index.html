@@ -74,7 +74,7 @@
       <h1 class="title">For Chinny</h1>
       <p class="subtitle">Catch as many hearts as you can!<br/>Move with your finger (touch) or arrow keys.</p>
       <button class="start" id="startBtn">Start Game</button>
-      <p style="margin-top:10px; opacity:.8">Made with love by <strong>Dane</strong> </p>
+      <p style="margin-top:10px; opacity:.8">Made with love by <strong>Dane</strong></p>
     </div>
   </div>
 
@@ -84,7 +84,7 @@
       <div style="font-size:40px; margin-bottom:6px"><span class="heart">💖</span> <span class="heart">💖</span> <span class="heart">💖</span></div>
       <h2 class="title" style="font-size:clamp(24px,6vw,36px)">For Chinny</h2>
       <p id="finalText">You caught <b id="finalScore">0</b> hearts for Chinny!</p>
-      <p style="margin-top:6px">My Chinny, I'm so sorry that I hurt you will you please forgive me? 🥺</p>
+      <p style="margin-top:6px">My Chinny, I'm so sorry that I hurt you — will you please forgive me? 🥺</p>
       <div class="choices">
         <button class="choice yes" id="yesBtn">Yes! 💕</button>
         <button class="choice no" id="noBtn">No 😳</button>
@@ -94,13 +94,15 @@
 
   <div class="footer">Made for Chinny • <a href="#" id="restartLink">Play again</a></div>
 
-  <!-- Soft music (royalty-free-ish vibe) – replace with your own mp3 if you like -->
-  <audio id="bgm" loop>
-    <!-- You can replace the src with your own file path, e.g., assets/music.mp3 -->
-    <source src="" type="audio/mpeg">
-  </audio>
+  <!-- MUSIC: local MP3 that starts on Start Button -->
+  <audio id="bgm" loop preload="auto" playsinline></audio>
 
   <script>
+    // ====== MUSIC (set your file path here) ======
+    const bgm = document.getElementById('bgm');
+    const MUSIC_SRC = 'habang-buhay.mp3'; // put this MP3 in your repo root (or use assets/habang-buhay.mp3)
+    bgm.src = MUSIC_SRC;
+
     // ====== Game state ======
     const canvas = document.getElementById('game');
     const ctx = canvas.getContext('2d');
@@ -114,7 +116,6 @@
     const noBtn = document.getElementById('noBtn');
     const restartLink = document.getElementById('restartLink');
     const musicToggle = document.getElementById('musicToggle');
-    const bgm = document.getElementById('bgm');
 
     let W = 0, H = 0;
     let playing = false;
@@ -125,7 +126,7 @@
     let player = { x: 0, y: 0, w: 90, h: 26, vx: 0 };
     let keys = new Set();
 
-    // Animation clock (moved up so startGame can use it)
+    // Animation clock
     let lastTick = 0, accum = 0;
 
     // Resize canvas to device pixels for crispness
@@ -164,15 +165,20 @@
     window.addEventListener('pointermove', e=>{ if (dragging) player.x = pointerPos(e).x });
     window.addEventListener('pointerup', ()=> dragging=false);
 
-    // Music toggle (you can set a src on <audio> for real music)
+    // Music toggle
     let musicOn = false;
     function toggleMusic(){
       musicOn = !musicOn;
-      if (musicOn && bgm.src){ bgm.volume = 0.35; bgm.play().catch(()=>{}); }
-      else { bgm.pause(); }
-      musicToggle.textContent = musicOn? '🔊 Music' : '🎵 Music';
+      if (musicOn && bgm.src){
+        bgm.play().then(()=>{
+          musicToggle.textContent = '🔊 Music';
+        }).catch(()=>{ musicToggle.textContent = '🎵 Music'; });
+      } else {
+        bgm.pause();
+        musicToggle.textContent = '🎵 Music';
+      }
     }
-    musicToggle.addEventListener('click', ()=>{ toggleMusic(); });
+    musicToggle.addEventListener('click', toggleMusic);
 
     // Start / Restart
     document.getElementById('startBtn').addEventListener('click', startGame);
@@ -185,12 +191,32 @@
       player.x = W/2; player.y = H-80;
     }
 
+    function fadeInMusic(target=0.5, step=0.05, interval=80){
+      try {
+        bgm.volume = 0;
+        const id = setInterval(()=>{
+          bgm.volume = Math.min(target, bgm.volume + step);
+          if (bgm.volume >= target) clearInterval(id);
+        }, interval);
+      } catch {}
+    }
+
     function startGame(){
       reset();
       startScreen.style.display = 'none';
       canvas.style.pointerEvents = 'auto';
       playing = true;
       lastTick = performance.now();
+
+      // Start music on user gesture
+      bgm.muted = false;
+      bgm.currentTime = 0;
+      bgm.play().then(()=>{
+        musicOn = true;
+        musicToggle.textContent = '🔊 Music';
+        fadeInMusic(0.5);
+      }).catch(()=>{ /* if it fails, toggle works anyway */ });
+
       requestAnimationFrame(loop);
     }
 
@@ -251,6 +277,8 @@
       finalScoreEl.textContent = score;
       finalText.innerHTML = `You caught <b>${score}</b> hearts for Chinny!`;
       endModal.classList.add('show');
+      // (Optional) Keep music going, or pause:
+      // bgm.pause();
     }
 
     function drawBackground(){
