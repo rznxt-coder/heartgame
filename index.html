@@ -106,7 +106,7 @@
       const s = size;
       ctx.save();
       ctx.translate(x, y);
-      ctx.scale(s, s);
+      ctx.scale(s/100, s/100);
       ctx.beginPath();
       // Parametric-ish cartoony heart
       ctx.moveTo(0, -0.25);
@@ -279,7 +279,7 @@
       for (let i=0;i<count;i++){
         const x = ((i*97) % W) + (Math.sin(performance.now()/1000 + i)*40);
         const y = (i/count) * H;
-        drawHeart(ctx, x, y, 12/100, 'rgba(255,59,124,.08)');
+        drawHeart(ctx, x, y, 12, 'rgba(255,59,124,.08)');
       }
     }
 
@@ -303,17 +303,15 @@
       ctx.arcTo(-w/2, -h/2, w/2, -h/2, r);
       ctx.closePath(); ctx.fill(); ctx.stroke();
       // little hearts on basket
-      drawHeart(ctx, -22, -2, 10/100, '#fff');
-      drawHeart(ctx, 0, -2, 10/100, '#fff');
-      drawHeart(ctx, 22, -2, 10/100, '#fff');
+      drawHeart(ctx, -22, -2, 10, '#fff');
+      drawHeart(ctx, 0, -2, 10, '#fff');
+      drawHeart(ctx, 22, -2, 10, '#fff');
       ctx.restore();
     }
 
     function drawHearts(){
       for (const h of hearts){
-        const size = 22; // px
-        const g = heartGradient(h.x, h.y, size);
-        drawHeart(ctx, h.x, h.y, size/100, g, true);
+        const size = 22; // px$1drawHeart(ctx, h.x, h.y, size, g, true);
       }
     }
 
